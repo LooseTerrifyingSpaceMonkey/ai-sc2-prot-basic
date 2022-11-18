@@ -36,7 +36,7 @@ class LTSMPBot(BotAI):
 
         await self.distribute_workers()
 
-    async def on_end(self, result: Result):
+    async def on_end(self, result: Result):  # test
         """
         This code runs once at the end of the game
         Do things here after the game ends
