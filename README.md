@@ -83,3 +83,12 @@ python create_ladder_zip.py
 ```
 This will create the zip file`publish\bot.zip`.
 You can then distribute this zip file to competitions.
+
+
+## Steve Notes
+
+### Installation
+- Go to C:\ProgramData\mamabaforge\condabin
+- .\conda activate C:\Users\Steven\.conda\envs\ai-sc2-prot-basic
+- .\conda install protobuf=3.20.2
+- .\conda install s2clientprotocol=5.0.9.87702.0

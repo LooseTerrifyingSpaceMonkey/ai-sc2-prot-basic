@@ -1,5 +1,5 @@
 
-from bot import CompetitiveBot
+from bot import LTSMPBot
 
 import argparse
 import asyncio
@@ -102,11 +102,11 @@ def parse_arguments():
 
 def load_bot(args):
     # Load bot
-    competitive_bot = CompetitiveBot()
+    competitive_bot = LTSMPBot()
     # Add opponent_id to the bot class (accessed through self.opponent_id)
     competitive_bot.opponent_id = args.OpponentId
 
-    return Bot(CompetitiveBot.RACE, competitive_bot)
+    return Bot(LTSMPBot.RACE, competitive_bot)
 
 
 def run():
@@ -123,6 +123,7 @@ def run():
     else:
         # Local game
         print("Starting local game...")
+        print(args.Map)
         run_game(sc2.maps.get(args.Map),
                      [bot, Computer(Race[args.ComputerRace], Difficulty[args.ComputerDifficulty])],
                      realtime=args.Realtime,
