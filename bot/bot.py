@@ -39,9 +39,9 @@ class LTSMPBot(BotAI):
                   f"gateways: {self.structures(UnitTypeId.GATEWAY).amount}, \n cybernetics cores: {self.structures(UnitTypeId.CYBERNETICSCORE).amount}", \
                   f"stargates: {self.structures(UnitTypeId.STARGATE).amount}, "
                   f"voidrays: {self.units(UnitTypeId.VOIDRAY).amount}, supply: {self.supply_used}/{self.supply_cap}, "
-                  f"shield_upgrade1: {self.already_pending_upgrade(UpgradeId.PROTOSSSHIELDSLEVEL1)}, air_weap_upgrade1: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRWEAPONSLEVEL1)}, air_arm_upgrade1: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL1)}"
-                  f"shield_upgrade2: {self.already_pending_upgrade(UpgradeId.PROTOSSSHIELDSLEVEL2)}, air_weap_upgrade2: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRWEAPONSLEVEL2)} , air_arm_upgrade2: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL2)}"
-                  f"shield_upgrade3: {self.already_pending_upgrade(UpgradeId.PROTOSSSHIELDSLEVEL3)}, air_weap_upgrade3: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRWEAPONSLEVEL3)} , air_arm_upgrade3: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL3)}")
+                  f"shield_upgrade1: {self.already_pending_upgrade(UpgradeId.PROTOSSSHIELDSLEVEL1)}, air_weap_upgrade1: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRWEAPONSLEVEL1)}, air_arm_upgrade1: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL1)} "
+                  f"shield_upgrade2: {self.already_pending_upgrade(UpgradeId.PROTOSSSHIELDSLEVEL2)}, air_weap_upgrade2: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRWEAPONSLEVEL2)}, air_arm_upgrade2: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL2)} "
+                  f"shield_upgrade3: {self.already_pending_upgrade(UpgradeId.PROTOSSSHIELDSLEVEL3)}, air_weap_upgrade3: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRWEAPONSLEVEL3)}, air_arm_upgrade3: {self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL3)} ")
 
         await self.distribute_workers()
 
@@ -53,8 +53,8 @@ class LTSMPBot(BotAI):
                     and self.can_afford(UnitTypeId.NEXUS):
                 await self.expand_now()  # build a nexus
             # else:
-            # if we have less than 15 voidrays, build one:
-            if self.structures(UnitTypeId.VOIDRAY).amount < 20 and self.can_afford(UnitTypeId.VOIDRAY):
+            # if we have less than x void rays, build one:
+            if self.can_afford(UnitTypeId.VOIDRAY):
                 for sg in self.structures(UnitTypeId.STARGATE).ready.idle:
                     if self.can_afford(UnitTypeId.VOIDRAY):
                         sg.train(UnitTypeId.VOIDRAY)
@@ -70,18 +70,18 @@ class LTSMPBot(BotAI):
                 await self.build(UnitTypeId.PYLON, near=self.main_base_ramp.protoss_wall_pylon)
 
             elif self.structures(UnitTypeId.PYLON) and not self.already_pending(UnitTypeId.PYLON) \
-                    and self.can_afford(UnitTypeId.PYLON) and supply_remaining < 4:
+                    and self.can_afford(UnitTypeId.PYLON) and supply_remaining <= 4:
                 for struct in self.structures.filter(lambda unit: unit.is_powered is False):
                     target_pylon = self.structures(UnitTypeId.PYLON).closest_to(struct)
                 if not target_pylon:
                     if self.structures(UnitTypeId.PYLON).amount < 5:
                         # build from the closest pylon towards the enemy to start
-                        target_pylon = self.structures(UnitTypeId.PYLON).closest_to(self.enemy_start_locations[0])
+                        target_pylon = self.structures(UnitTypeId.NEXUS).closest_to(self.enemy_start_locations[0])
                     else:
                         target_pylon = self.structures(UnitTypeId.PYLON).random
                 # build as far away from target_pylon as possible:
-                pos = target_pylon.position.towards(self.enemy_start_locations[0],
-                                                    random.randrange(8, 15))
+                pos = target_pylon.position.towards_with_random_angle(self.enemy_start_locations[0],
+                                                                      random.randrange(8, 15))
                 # pos = target_pylon.position.towards(self.enemy_start_locations[0], random.randrange(8, 15))
                 await self.build(UnitTypeId.PYLON, near=pos)
 
@@ -105,6 +105,15 @@ class LTSMPBot(BotAI):
                     UnitTypeId.CYBERNETICSCORE) and self.can_afford(UnitTypeId.CYBERNETICSCORE):
                 await self.build(UnitTypeId.CYBERNETICSCORE,
                                  near=self.main_base_ramp.protoss_wall_buildings[1])
+
+            # a stargate? this gets us towards void ray if we haven't built one yet or there is one and none are idle
+            elif not self.already_pending(UnitTypeId.STARGATE) and (
+                    not self.structures(UnitTypeId.STARGATE) and self.can_afford(UnitTypeId.STARGATE)
+                    and self.structures(UnitTypeId.CYBERNETICSCORE).ready) \
+                    or (self.structures(UnitTypeId.STARGATE)
+                        and len(self.structures(UnitTypeId.STARGATE).ready.idle) == 0):
+                await self.build(UnitTypeId.STARGATE,
+                                 near=self.structures(UnitTypeId.PYLON).closest_to(nexus))
 
             elif self.structures(UnitTypeId.CYBERNETICSCORE).ready and self.can_afford(
                     UpgradeId.PROTOSSAIRWEAPONSLEVEL1) \
@@ -150,15 +159,6 @@ class LTSMPBot(BotAI):
                     and self.already_pending_upgrade(UpgradeId.PROTOSSAIRARMORSLEVEL3) == 0 \
                     and self.structures(UnitTypeId.FLEETBEACON).ready:
                 self.research(UpgradeId.PROTOSSAIRARMORSLEVEL3)
-
-            # a stargate? this gets us towards void ray if we haven't build one yet or there is one and none are idle
-            elif not self.already_pending(UnitTypeId.STARGATE) and (
-                    not self.structures(UnitTypeId.STARGATE) and self.can_afford(UnitTypeId.STARGATE)
-                    and self.structures(UnitTypeId.CYBERNETICSCORE).ready) \
-                    or (self.structures(UnitTypeId.STARGATE)
-                        and len(self.structures(UnitTypeId.STARGATE).ready.idle) == 0):
-                await self.build(UnitTypeId.STARGATE,
-                                 near=self.structures(UnitTypeId.PYLON).closest_to(nexus))
 
             # if we don't have a forge and we can afford one:
             elif not self.structures(UnitTypeId.FORGE) and not self.already_pending(UnitTypeId.FORGE) \
